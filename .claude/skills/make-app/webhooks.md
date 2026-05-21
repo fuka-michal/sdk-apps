@@ -1,0 +1,263 @@
+# Webhooks
+
+A webhook lets the remote service push events into Make. Pairs with an **Instant Trigger** module (`typeId: 10`).
+
+## Webhook types
+
+| Type                          | URL model                       | Connection required? | Use when                                  |
+| ----------------------------- | ------------------------------- | -------------------- | ----------------------------------------- |
+| **Shared**                    | One URL for all users           | Yes (mandatory)      | Service supports only one global endpoint |
+| **Dedicated, attached**       | Per-user URL, auto-registered   | Often                | API has webhook-management endpoints      |
+| **Dedicated, not-attached**   | Per-user URL, user pastes it    | Often no             | API doesn't expose webhook CRUD           |
+
+>90% of services use **dedicated** webhooks. Shared webhooks only work after app publication.
+
+## Folder structure
+
+```
+webhooks/<name>/
+├── metadata.json         { "label": "...", "type": "web" | "web-shared" }
+├── communication.imljson Parses inbound request → emits a bundle
+├── parameters.imljson    Fields the user fills when creating the webhook
+├── interface.imljson     Output schema (optional, recommended for not-attached)
+├── scope.imljson         OAuth scopes needed
+├── attach.imljson        (dedicated attached) Register URL with service
+├── detach.imljson        (dedicated attached) Unregister
+└── update.imljson        (optional) Update existing registration
+```
+
+`metadata.json`:
+```json
+{ "label": "Issue events", "type": "web" }
+```
+
+`type` ∈ `"web"` (dedicated, per-user URL) or `"web-shared"` (shared, single URL for all users). These are the **only** two valid values per schema.
+
+## `communication.imljson` — inbound handler
+
+Available IML vars: `body`, `query`, `headers`, `method`, `parameters`/`data`, `now`, `environment`.
+
+Top-level keys:
+
+| Key             | Purpose                                                                |
+| --------------- | ---------------------------------------------------------------------- |
+| `verification`  | Handles challenge handshake on initial registration.                   |
+| `respond`       | Customizes the HTTP response (status/headers/body/type).               |
+| `iterate`       | When the webhook delivers multiple events in one batch.                |
+| `output`        | Shape of the emitted bundle.                                           |
+| `condition`     | Boolean filter — request is ignored if false (no bundle).              |
+| `uid`           | Shared webhooks: maps payload to a user (must match connection's uid). |
+
+### Simple handler
+```json
+{ "output": "{{body}}" }
+```
+
+### With verification + custom response
+```json
+{
+  "verification": {
+    "condition": "{{body.challenge}}",
+    "respond": {
+      "type": "text",
+      "body": "{{body.challenge}}"
+    }
+  },
+  "respond": {
+    "status": 200,
+    "type": "json",
+    "body": { "ok": true }
+  },
+  "output": "{{body}}"
+}
+```
+
+> `respond.type` is restricted to `json` / `urlencoded` / `text` only (no multipart/binary). `respond.status` is an integer 100-999.
+
+### Batched events (one webhook → many bundles)
+```json
+{
+  "iterate": "{{body.events}}",
+  "output": "{{item}}"
+}
+```
+
+### Filter — only emit for specific event types
+```json
+{
+  "condition": "{{body.event == 'issue.created'}}",
+  "output": "{{body}}"
+}
+```
+
+### Shared webhook routing (uid)
+```json
+{
+  "uid": "{{body.user_id}}",
+  "output": "{{body.payload}}"
+}
+```
+
+The connection's `info` must expose a matching `uid`:
+```json
+"info": {
+  "response": { "uid": "{{body.user.id}}" }
+}
+```
+
+## `attach.imljson` — dedicated registration
+
+Runs once when the user creates the instant trigger. Anything in `response.data` is persisted as `data.*` for later use (especially detach).
+
+```json
+{
+  "url": "/repos/{{parameters.owner}}/{{parameters.repo}}/hooks",
+  "method": "POST",
+  "body": {
+    "name":   "web",
+    "active": true,
+    "events": "{{parameters.events}}",
+    "config": {
+      "url":          "{{webhook.url}}",
+      "content_type": "json"
+    }
+  },
+  "response": {
+    "data": { "externalHookId": "{{body.id}}" }
+  }
+}
+```
+
+`{{webhook.url}}` = the per-user Make-generated webhook URL.
+
+## `detach.imljson` — dedicated unregistration
+
+```json
+{
+  "url": "/repos/{{data.owner}}/{{data.repo}}/hooks/{{data.externalHookId}}",
+  "method": "DELETE"
+}
+```
+
+> **Critical:** anything needed by `detach` must be saved in `attach`'s `response.data`. Store the resource identifiers (owner, repo) alongside the hook ID. Once attached, original `parameters` are not guaranteed to remain available.
+
+## `update.imljson` — when params change
+
+Some APIs support PUT/PATCH on the hook. Update similar to attach, plus persist new state.
+
+```json
+{
+  "url": "/repos/{{data.owner}}/{{data.repo}}/hooks/{{data.externalHookId}}",
+  "method": "PATCH",
+  "body": { "events": "{{parameters.events}}" },
+  "response": {
+    "data": { "events": "{{parameters.events}}" }
+  }
+}
+```
+
+## `parameters.imljson` — webhook config
+
+User-entered fields shown when creating the webhook (event type, repo, etc.). Same schema as module parameters.
+
+```json
+[
+  { "name": "owner", "type": "text", "label": "Owner", "required": true },
+  { "name": "repo",  "type": "text", "label": "Repository", "required": true,
+    "options": "rpc://listRepositoriesForOwner" },
+  { "name": "events", "type": "array", "label": "Events",
+    "spec": { "type": "select", "options": [
+      { "label": "Issues",        "value": "issues" },
+      { "label": "Pull requests", "value": "pull_request" },
+      { "label": "Pushes",        "value": "push" }
+    ]},
+    "required": true
+  }
+]
+```
+
+## `interface.imljson` — output schema
+
+For not-attached webhooks especially, define the expected payload shape so downstream modules can map fields properly.
+
+```json
+[
+  { "name": "action", "type": "text", "label": "Action" },
+  { "name": "issue", "type": "collection", "label": "Issue", "spec": [
+    { "name": "number", "type": "uinteger", "label": "Number" },
+    { "name": "title",  "type": "text",     "label": "Title" },
+    { "name": "state",  "type": "text",     "label": "State" }
+  ]}
+]
+```
+
+## Instant trigger module (paired)
+
+```json
+// modules/watchIssueInstant/metadata.json
+{
+  "label": "Watch issues (instant)",
+  "description": "Triggers immediately when a GitHub issue event occurs.",
+  "typeId": 10,
+  "crud": "read",
+  "webhook": "issueWebhook"
+}
+```
+
+`communication.imljson` is **optional**; use it to fetch supplemental data per bundle. No `iterate`/`pagination` here. `{{payload}}` references the current bundle.
+
+```json
+{
+  "url": "/repos/{{payload.repository.full_name}}/issues/{{payload.issue.number}}",
+  "method": "GET",
+  "response": { "output": "{{body}}" }
+}
+```
+
+## Verification patterns
+
+### Challenge in body (e.g. Slack)
+```json
+{
+  "verification": {
+    "condition": "{{body.type == 'url_verification'}}",
+    "respond": { "type": "text", "body": "{{body.challenge}}" }
+  }
+}
+```
+
+### GET-only handshake
+```json
+{
+  "verification": {
+    "condition": "{{method == 'GET'}}",
+    "respond": { "status": 200 }
+  }
+}
+```
+
+### Hub-style (subscribe.mode = 'subscribe')
+```json
+{
+  "verification": {
+    "condition": "{{query['hub.mode'] == 'subscribe'}}",
+    "respond": { "type": "text", "body": "{{query['hub.challenge']}}" }
+  }
+}
+```
+
+## Not-attached webhook UX
+
+For not-attached webhooks (user pastes URL into the service UI):
+- Provide a strong `interface.imljson` so unusual payloads (custom date formats) become mappable.
+- Document in the module description: "Set up the webhook in <Service> with the URL shown here".
+
+## Source URLs
+
+- https://developers.make.com/custom-apps-documentation/app-components/webhooks.md
+- https://developers.make.com/custom-apps-documentation/app-components/webhooks/shared.md
+- https://developers.make.com/custom-apps-documentation/app-components/webhooks/dedicated.md
+- https://developers.make.com/custom-apps-documentation/app-components/webhooks/dedicated/attached.md
+- https://developers.make.com/custom-apps-documentation/app-components/webhooks/dedicated/not-attached.md
+- https://developers.make.com/custom-apps-documentation/app-components/modules/instant-trigger.md
+- https://developers.make.com/custom-apps-documentation/best-practices/instant-triggers-scheduled.md
