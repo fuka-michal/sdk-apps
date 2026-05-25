@@ -24,6 +24,18 @@ A Make app is a tree of **components**, each component is a folder of small JSON
   functions/<name>/                Custom IML JavaScript functions
 ```
 
+### Who names each component
+
+| Component   | Remote ID picked by                              | Local-folder convention                |
+| ----------- | ------------------------------------------------ | -------------------------------------- |
+| Connection  | **Make server** — `<appId><N>` (1, 2, 3…)        | Optional; usually matches the remote   |
+| Webhook     | **Make server** — `<appId><N>` (shared counter)  | Optional; usually matches the remote   |
+| Module      | **Developer** (mandatory, sent as-is)            | `camelCase` (e.g. `listRepositories`)  |
+| RPC         | **Developer** (mandatory, sent as-is)            | `camelCase` (e.g. `getCustomFields`)   |
+| Function    | **Developer** (mandatory; matches JS identifier) | `camelCase` (e.g. `removeEmpty`)       |
+
+**Implication:** `attachedAccounts`, `connection`, `altConnection`, and instant-trigger `webhook` references use the **server-generated** name (`myapp-abc1`) — not the local folder name. The `idMapping` block inside `origins[]` in `makecomapp.json` records the local↔remote pairing. See `architecture.md` for the full regex table.
+
 Each `*.imljson` file is a section of a component. Common sections per folder:
 
 | File                    | Purpose                                                                |

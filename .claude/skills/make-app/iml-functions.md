@@ -4,6 +4,20 @@ JavaScript helpers in `functions/<name>/code.js` accessible from any `.imljson` 
 
 > Custom functions are **not available by default** — request the feature via Make helpdesk for your app.
 
+## Naming — function name is the JS identifier
+
+A function has only one identifier — the folder name `functions/<name>/`, which must **exactly match** the `function <name>(...)` declaration inside `code.js`. This is also the name used to call it from IML (`{{<name>(...)}}`).
+
+| Aspect       | Detail                                                                    |
+| ------------ | ------------------------------------------------------------------------- |
+| Picked by    | **Mandatory user input**                                                  |
+| Convention   | `camelCase` (`removeEmpty`, `formatDate`, `dynamicFields`)                |
+| Format regex | `^[a-zA-Z][0-9a-zA-Z]{1,94}[0-9a-zA-Z]$` — 3-96 chars, alphanumeric only  |
+| Constraint   | Folder name === JS function identifier inside `code.js`                   |
+| Reserved     | Never shadow built-in IML functions listed in `iml.md`                    |
+
+Renaming requires updating: the folder, the `function` declaration in `code.js`, every `{{name(...)}}` reference, and every `iml.name(...)` call from other functions.
+
 ## Folder structure
 
 ```

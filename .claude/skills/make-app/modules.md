@@ -2,6 +2,20 @@
 
 A module is one operation visible in the scenario builder. Six types — pick by `typeId` in `metadata.json`. **`typeId` is immutable after the module exists.**
 
+## Naming — module IDs are user-picked and persistent
+
+Unlike connections/webhooks (which get a server-generated `<appId><N>` name), **module IDs are entered by the developer and sent to Make as-is** — the same string is used for the local folder, the remote ID, and every cross-reference (groups, `attachedAccounts`, RPC parents, etc.).
+
+| Aspect           | Detail                                                                |
+| ---------------- | --------------------------------------------------------------------- |
+| Picked by        | **Mandatory user input** — no autogenerate option                     |
+| Convention       | `camelCase`, verb + noun (`listRepositories`, `createIssue`)          |
+| Format regex     | `^[a-zA-Z][0-9a-zA-Z]{2,63}$` — 3-64 chars, alphanumeric only, letter start (**no dashes**) |
+| Immutability     | Treat as immutable after deploy — renaming breaks groups, references, and scenarios already using it |
+| Used in          | `groups.imljson` `modules[]`, `attachedAccounts` references, deep links |
+
+Module ID rules are stricter than connection/webhook IDs — **no dashes allowed**, longer maximum (64 chars).
+
 | typeId | Type            | When to use                                                          |
 | ------ | --------------- | -------------------------------------------------------------------- |
 | 1      | Polling trigger | Periodically fetch new items via REST (`Watch <plural>`)             |

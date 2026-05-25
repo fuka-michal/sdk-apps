@@ -2,6 +2,45 @@
 
 A connection holds the credentials a user authorizes for the app. Per-connection folder: `connections/<name>/` with `metadata.json` + `communication.imljson` + `parameters.imljson` (+ `scope.imljson`, `scopes.imljson` for OAuth).
 
+## Naming — connection IDs are server-generated
+
+A connection has **two** identifiers:
+
+| Identifier      | Where it lives                                 | Who picks it                                       |
+| --------------- | ---------------------------------------------- | -------------------------------------------------- |
+| **Local ID**    | Folder name `connections/<localId>/`           | Optional user input — empty = autogenerate         |
+| **Remote name** | The actual ID in Make (used by API + modules)  | **Server-generated**: `<appId><N>` (incremental N) |
+
+When a connection is first deployed, Make's backend assigns the remote name as the **app ID followed by an incrementing integer** — `1`, `2`, `3`, … globally across the app. For an app with `appId: "mfu-github-odpjbh"`:
+
+- First connection deployed → `mfu-github-odpjbh1`
+- Second connection → `mfu-github-odpjbh2`
+
+The remote name is **immutable** once created. The VS Code extension stores the local↔remote pairing inside `origins[].idMapping.connection` in `makecomapp.json`:
+
+```json
+{
+  "origins": [{
+    "appId": "mfu-github-odpjbh",
+    "idMapping": {
+      "connection": [
+        { "local": "githubOauth", "remote": "mfu-github-odpjbh1" }
+      ]
+    }
+  }]
+}
+```
+
+**Local ID validation** (VS Code extension, when not empty): `^[a-zA-Z][0-9a-zA-Z-]{1,33}[0-9a-zA-Z]$` — 3-35 chars, must start with a letter, alphanumeric + dash, no trailing dash.
+
+**Module references use the remote name.** Inside a module's `metadata.json`:
+```json
+"attachedAccounts": ["mfu-github-odpjbh1"]
+```
+…not the local folder name. Same applies for `webhook.connection` and `rpc.connection` references.
+
+> When pulling/cloning an existing app, the local folder name is usually the remote name (Make sends it back as-is). Renaming the folder requires updating `idMapping` and every `attachedAccounts`/`connection`/`altConnection` reference.
+
 ## Connection types — only two per schema
 
 ```json
