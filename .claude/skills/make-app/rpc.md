@@ -4,6 +4,19 @@ RPCs fetch live data while the user is configuring a module in the scenario edit
 
 Each RPC lives in `rpc/<name>/` (sometimes `rpcs/<name>/`).
 
+## Naming — RPC IDs are user-picked and become part of the URL
+
+RPC IDs follow the **same model as modules**: developer picks the name, it's used verbatim for the local folder and the remote ID. There is no auto-generation.
+
+| Aspect       | Detail                                                                       |
+| ------------ | ---------------------------------------------------------------------------- |
+| Picked by    | **Mandatory user input**                                                     |
+| Convention   | `camelCase`, often verb + noun (`listRepositories`, `getCustomFields`)       |
+| Format regex | `^[a-zA-Z][0-9a-zA-Z]{2,63}$` — 3-64 chars, alphanumeric only (no dashes)    |
+| Treat as     | Immutable after deploy — the name shows up in every `rpc://` URL across the app and in scenarios |
+
+The RPC name **is the URL**: `rpc://listRepositories` references the folder `rpc/listRepositories/`. Renaming an RPC requires updating every `options`, `nested`, and `rpc://` reference in every module that consumes it.
+
 ## Folder structure
 
 ```

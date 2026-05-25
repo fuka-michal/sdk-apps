@@ -58,6 +58,23 @@
         └── test/test.js      it("...", () => { assert.strictEqual(...) })
 ```
 
+## Component IDs — who picks the name
+
+Every component has a **remote ID** (used by Make's backend, by other components, and by scenarios) and a **local ID** (the folder name in the repo). For connections and webhooks these can differ; for modules / RPCs / functions they're always the same.
+
+| Component   | Who picks the remote ID                              | Format / regex                                       | Example                |
+| ----------- | ---------------------------------------------------- | ---------------------------------------------------- | ---------------------- |
+| Connection  | **Server**: `<appId><N>` (incremental, immutable)    | `^[a-zA-Z][0-9a-zA-Z-]{1,33}[0-9a-zA-Z]$` (3-35)     | `mfu-github-odpjbh1`   |
+| Webhook     | **Server**: `<appId><N>` (incremental, immutable)    | `^[a-zA-Z][0-9a-zA-Z-]{1,33}[0-9a-zA-Z]$` (3-35)     | `mfu-github-odpjbh2`   |
+| Module      | **Developer** (mandatory, sent as-is to server)      | `^[a-zA-Z][0-9a-zA-Z]{2,63}$` (3-64, no dashes)      | `listRepositories`     |
+| RPC         | **Developer** (mandatory, sent as-is to server)      | `^[a-zA-Z][0-9a-zA-Z]{2,63}$` (3-64, no dashes)      | `getCustomFields`      |
+| Function    | **Developer** (mandatory; must match JS identifier)  | `^[a-zA-Z][0-9a-zA-Z]{1,94}[0-9a-zA-Z]$` (3-96)      | `removeEmpty`          |
+| **App ID**  | Developer (set at app creation, **immutable**)       | `^[a-z][0-9a-z-]+[0-9a-z]$` (lowercase + dash only)  | `mfu-github-odpjbh`    |
+
+**Key implication:** When wiring `attachedAccounts`, `connection`, `altConnection`, or the instant-trigger `webhook` field, you must use the **server-generated remote name** (`mfu-github-odpjbh1`) — never the local folder name.
+
+**`origins[].idMapping`** in `makecomapp.json` maps local folder names to remote IDs. For freshly cloned apps the two are usually identical; they can diverge if you create the local component first (with an arbitrary local label) and then deploy.
+
 ## Module `typeId` reference
 
 The `metadata.json` `typeId` controls module behaviour. **Never change `typeId` on an existing module** — it changes its semantics.
