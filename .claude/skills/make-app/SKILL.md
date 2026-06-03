@@ -36,6 +36,8 @@ A Make app is a tree of **components**, each component is a folder of small JSON
 
 **Implication:** `attachedAccounts`, `connection`, `altConnection`, and instant-trigger `webhook` references use the **server-generated** name (`myapp-abc1`) — not the local folder name. The `idMapping` block inside `origins[]` in `makecomapp.json` records the local↔remote pairing. See `architecture.md` for the full regex table.
 
+**Stable identity (`$id`).** When an app is synced to a **GitHub repo**, each connection/webhook `metadata.json` carries a `$id` (a UUID v4) that keeps its identity stable across folder/name renames and across cloning the repo into multiple apps. Make mints one on first push if absent, but **providing your own UUID v4 is recommended when hand-authoring** these files. See `architecture.md` → "Stable component identity".
+
 Each `*.imljson` file is a section of a component. Common sections per folder:
 
 | File                    | Purpose                                                                |

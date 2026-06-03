@@ -75,6 +75,32 @@ Every component has a **remote ID** (used by Make's backend, by other components
 
 **`origins[].idMapping`** in `makecomapp.json` maps local folder names to remote IDs. For freshly cloned apps the two are usually identical; they can diverge if you create the local component first (with an arbitrary local label) and then deploy.
 
+## Stable component identity — the `$id` (UUID v4) in `metadata.json`
+
+When an app is bound to a **GitHub repository** (Make's app ↔ GitHub sync), connection and webhook components carry a `$id` — a **UUID v4** stored inside their `metadata.json` — that acts as their *stable identity* across the repo↔Make boundary:
+
+```json
+{
+  "$id": "550e8400-e29b-41d4-a716-446655440000",
+  "label": "GitHub OAuth Connection",
+  "type": "oauth"
+}
+```
+
+**Why only connections and webhooks?** Their live names are **server-generated and mutable** (`<appId><N>`, see the table above), so neither the live name nor the repo folder name is a reliable identity. Modules, RPCs, and functions are developer-named and sent as-is — their folder name already *is* their stable identity, so they carry no `$id`.
+
+**What the `$id` buys you:**
+
+- **Rename-safe.** Rename the repo folder (`connections/oauth2-1/` → `connections/slack/`) and the next pull matches on the `$id`, updates the folder→name mapping, and leaves the live connection untouched. Without it, matching falls back to the folder name and a rename looks like a brand-new component.
+- **Portable across apps.** The same repo can be cloned into many Make apps. Each app auto-generates its own local connection name, but every clone reuses the one `$id`, so the repo layout stays canonical and the mapping is never ambiguous.
+- **Reference integrity.** Cross-component references (`attachedAccounts`, a module's `webhook`, `connectedSystemName`) are rewritten to the stable repo-folder path on push and back to the live name on pull, keyed off the `$id`.
+
+**Why provide it yourself.** On the first push Make injects a random `$id` when one is absent, so it is not strictly mandatory. But if you **hand-author** a connection/webhook directly in the repo (or want deterministic, reviewable identity from commit one), set your own `$id` to any UUID v4 — a pull honors the `$id` already present in the file and only mints one when it is missing. Providing it up front avoids a churning "Make added `$id`" diff on the first sync and guarantees the component is recognized as the same entity everywhere the repo is cloned. The `$id` is a **repo-side-only** key: it lives in the GitHub `metadata.json` and is stripped before the body is written into the live app on pull.
+
+The binding records the link as `$id → { dbName (live name), repoPath (repo folder) }`.
+
+> This `$id` is the **GitHub-binding** identity and is distinct from `makecomapp.json`'s `origins[].idMapping` (the VS Code extension's local-folder ↔ remote-Make-name map). Both keep connection/webhook identity stable across renames, but for different sync paths: `$id` for app↔GitHub, `idMapping` for local-folder↔Make.
+
 ## Module `typeId` reference
 
 The `metadata.json` `typeId` controls module behaviour. **Never change `typeId` on an existing module** — it changes its semantics.

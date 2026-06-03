@@ -17,6 +17,8 @@ The local↔remote pairing is stored in `origins[].idMapping.webhook` in `makeco
 
 **Local ID validation**: `^[a-zA-Z][0-9a-zA-Z-]{1,33}[0-9a-zA-Z]$` — 3-35 chars, letter start, alphanumeric + dash, no trailing dash.
 
+**Stable identity across GitHub sync — `$id`.** When the app is bound to a GitHub repo, the webhook's `metadata.json` also carries a `$id` (UUID v4) — the same stable-identity mechanism connections use (see `connections.md` and `architecture.md` → "Stable component identity"). It survives folder renames and keeps the same repo importable into multiple apps. Make mints one on first push if absent, but **provide your own UUID v4 when hand-authoring** the file.
+
 ## Webhook types
 
 | Type                          | URL model                       | Connection required? | Use when                                  |
