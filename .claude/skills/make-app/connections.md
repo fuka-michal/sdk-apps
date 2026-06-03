@@ -41,6 +41,16 @@ The remote name is **immutable** once created. The VS Code extension stores the 
 
 > When pulling/cloning an existing app, the local folder name is usually the remote name (Make sends it back as-is). Renaming the folder requires updating `idMapping` and every `attachedAccounts`/`connection`/`altConnection` reference.
 
+### Stable identity across GitHub sync — `$id`
+
+If the app is bound to a **GitHub repo**, the connection's `metadata.json` also carries a `$id` — a **UUID v4** that is the connection's stable identity for the repo↔Make sync, independent of both the (mutable) remote name and the repo folder name:
+
+```json
+{ "$id": "550e8400-e29b-41d4-a716-446655440000", "label": "GitHub OAuth Connection", "type": "oauth" }
+```
+
+A stable `$id` survives folder renames and lets the same repo be cloned into several apps (each app auto-names its own connection, all sharing the one `$id`). Make mints a random `$id` on first push if absent, but **provide your own UUID v4 when hand-authoring** the file so identity is deterministic from commit one. See `architecture.md` → "Stable component identity". (This is separate from `makecomapp.json`'s `idMapping`.)
+
 ## Connection types — only two per schema
 
 ```json
