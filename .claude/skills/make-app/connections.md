@@ -77,6 +77,39 @@ A stable `$id` survives folder renames and lets the same repo be cloned into sev
 - Place `common.client_id` / `common.client_secret` in Common Data (encrypted, locked after approval).
 - Sanitize tokens, codes, secrets in every step's `log.sanitize`.
 
+## `response.data` — persisting the token into the connection
+
+The `data` directive **saves data to the connection** so it can be accessed later from any module through the `connection` variable. It works like the `temp` directive, **except `data` is persisted on the connection** (across module executions) instead of living only for the current request chain.
+
+This is how a token obtained during connection validation (or token exchange) is stored once and reused by every module — the module never re-runs the auth call, it just reads `{{connection.<field>}}`.
+
+**Save it** in the connection's `communication.imljson` (Basic) or the `token` / `info` / `refresh` phases (OAuth):
+```json
+{
+	"response": {
+		"data": {
+			"accessToken": "{{body.token}}"
+		}
+	}
+}
+```
+
+**Use it later** in `base.imljson` (inherited by every module request):
+```json
+{
+	"url": "https://example.com",
+	"headers": {
+		"X-API-Key": "{{connection.accessToken}}"
+	}
+}
+```
+
+Notes:
+- Each `response.data` key becomes a `{{connection.<key>}}` field — e.g. `data.accessToken` → `{{connection.accessToken}}`.
+- For OAuth, also store `refreshToken` and `expires` in `data` so the `refresh` phase can renew silently (see the OAuth2 example below).
+- The token is secret: add the source field to `log.sanitize` (e.g. `response.body.token`, `request.headers.\`X-API-Key\``).
+- `connection.*` is read-only outside the connection — to update a stored value, re-set it via `response.data` in a connection phase (e.g. `refresh`).
+
 ## Basic connection (API Key, Basic Auth, custom token)
 
 ### `parameters.imljson`
