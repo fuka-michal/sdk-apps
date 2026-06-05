@@ -21,7 +21,6 @@ Extracted from the VS Code "Make Apps Editor" extension's JSON Schemas at `~/.vs
 | `base.imljson`, `base.iml.json`                             | `base.json`      |
 | `api-oauth.imljson`, `*.oauth-communication.iml.json`       | `api-oauth.json` |
 | `groups.json`                                               | `groups.json`    |
-| `makecomapp.json`                                           | `makecomapp.schema.json` |
 
 The `communication.imljson` file in a `connections/<name>/` folder for **OAuth** connections matches the `api-oauth.imljson` pattern (uses the OAuth schema with `preauthorize`/`authorize`/`token`/`info`/`refresh`/`invalidate`). All other communication files use the plain `api.json` schema (single request OR array of requests).
 
@@ -83,7 +82,7 @@ The `communication.imljson` file in a `connections/<name>/` folder for **OAuth**
 ### Mode (for select/text with editable)
 `edit` · `choose`
 
-### Connection type (in `makecomapp.json` components.connection.*)
+### Connection type (in connection `metadata.json` `type`)
 `basic` · `oauth`
 
 > `oauth1`, `oauth2`, `jwt` are NOT distinct connectionType values. OAuth1 vs OAuth2 is determined by the phases used (`requestToken`/`accessToken` = OAuth1; `authorize`/`token` = OAuth2). JWT uses `basic` with the `jwt()` IML function.
@@ -91,10 +90,10 @@ The `communication.imljson` file in a `connections/<name>/` folder for **OAuth**
 ### Webhook type
 `web` (dedicated) · `web-shared` (shared)
 
-### Module subtype (in `makecomapp.json` components.module.*.moduleType)
+### Module subtype (maps to `typeId` in module `metadata.json`)
 `action` · `instant_trigger` · `responder` · `search` · `trigger` · `universal`
 
-### Action CRUD (`actionCrud` in makecomapp.json)
+### Action CRUD (`crud` in module `metadata.json`)
 `create` · `read` · `update` · `delete`
 
 ## Validation rules
@@ -336,69 +335,6 @@ File path is `groups.json` per the schema mapping (though `groups.imljson` works
 ## Samples & Common
 
 Both `samples.imljson` and `common.imljson` have schema `{ "type": "object" }` with no restrictions on inner keys. They're free-form.
-
-## `makecomapp.json` structure
-
-```json
-{
-  "fileVersion": 1,
-  "generalCodeFiles": {
-    "base":    "<path or null>",
-    "common":  "<path or null>",
-    "groups":  "<path or null>",
-    "readme":  "<path or null>"
-  },
-  "components": {
-    "connection": { "<id>": { codeFiles, label, connectionType, ... } },
-    "webhook":    { "<id>": { codeFiles, label, webhookType, connection?, altConnection? } },
-    "module":     { "<id>": { codeFiles, label, description, moduleType, actionCrud?, connection?, altConnection?, webhook? } },
-    "rpc":        { "<id>": { codeFiles, label, connection? } },
-    "function":   { "<id>": { codeFiles } }
-  },
-  "origins": [
-    {
-      "label":       "<friendly name>",
-      "baseUrl":     "https://<zone>.make.com/api",
-      "appId":       "<a-z, 0-9, dash; immutable>",
-      "appVersion":  1,
-      "apikeyFile":  "<relative or absolute path>",
-      "idMapping":   { connection: [], function: [], module: [], rpc: [], webhook: [] }
-    }
-  ]
-}
-```
-
-### `codeFiles` per component
-
-```
-attach           webhook only
-code             function only (code.js)
-common           connection only (common data file path)
-communication    connection / module / rpc / webhook (api.imljson)
-defaultScope     connection (scope.imljson)
-detach           webhook only
-epoch            module (trigger only)
-installDirectives  connection (legacy install.imljson)
-installSpec        connection (legacy install-spec.imljson)
-interface        module / webhook (interface.imljson)
-mappableParams   module (expect.imljson)
-params           connection (parameters.imljson)
-requiredScope    module / webhook (scope.imljson)
-samples          module (samples.imljson)
-scope            module (alternative to requiredScope)
-scopeList        connection (scopes.imljson)
-staticParams     module (parameters.imljson)
-test             function only (test.js)
-update           webhook only (update.imljson)
-```
-
-### Origin validation
-
-- `baseUrl` pattern: `^https://(.*)/api$`
-- `appId` pattern: `^[a-z][0-9a-z-]+[0-9a-z]$`
-- `appVersion` is a number
-- `apikeyFile` cannot contain the placeholder `- OR FILL`
-- `label` cannot start with `-FILL-ME-`
 
 ## Notable differences from documentation
 

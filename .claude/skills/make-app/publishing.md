@@ -52,13 +52,9 @@ Source: https://developers.make.com/custom-apps-documentation/app-review/prerequ
 ## Testing vs Production pattern
 
 1. Production app on Make.
-2. Clone locally.
-3. Create a separate empty testing app on Make (label `<App> Testing`).
-4. Add as second origin in `makecomapp.json`.
-5. Develop & test in the testing app's Scenario Builder.
-6. Once validated, deploy to production origin.
-
-See `tooling.md` for `makecomapp.json` origin schema.
+2. Create a separate empty testing app on Make (label `<App> Testing`).
+3. Develop & test in the testing app's Scenario Builder.
+4. Once validated, promote the changes to the production app.
 
 ## Updating an approved app
 

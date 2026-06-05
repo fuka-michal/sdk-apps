@@ -13,7 +13,7 @@ Webhooks follow the **same naming model as connections**: a local folder name (o
 
 Increments are shared across the app's webhook list, not per-type — the first webhook is `<appId>1`, the second `<appId>2`. Remote names are **immutable** once created.
 
-The local↔remote pairing is stored in `origins[].idMapping.webhook` in `makecomapp.json`. **Instant-trigger modules reference the remote webhook name** in their `metadata.json` `webhook` field (and the makecomapp `webhook` field on the module).
+The repo folder name and the remote name can differ; under GitHub sync the folder↔remote pairing is tracked via the webhook's `$id` (see below). **Instant-trigger modules reference the remote webhook name** in their `metadata.json` `webhook` field.
 
 **Local ID validation**: `^[a-zA-Z][0-9a-zA-Z-]{1,33}[0-9a-zA-Z]$` — 3-35 chars, letter start, alphanumeric + dash, no trailing dash.
 

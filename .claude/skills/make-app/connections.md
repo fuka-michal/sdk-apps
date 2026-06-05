@@ -16,22 +16,9 @@ When a connection is first deployed, Make's backend assigns the remote name as t
 - First connection deployed → `mfu-github-odpjbh1`
 - Second connection → `mfu-github-odpjbh2`
 
-The remote name is **immutable** once created. The VS Code extension stores the local↔remote pairing inside `origins[].idMapping.connection` in `makecomapp.json`:
+The remote name is **immutable** once created. The repo folder name and the remote name can differ; under GitHub sync the folder↔remote pairing is tracked via the connection's `$id` (see below).
 
-```json
-{
-  "origins": [{
-    "appId": "mfu-github-odpjbh",
-    "idMapping": {
-      "connection": [
-        { "local": "githubOauth", "remote": "mfu-github-odpjbh1" }
-      ]
-    }
-  }]
-}
-```
-
-**Local ID validation** (VS Code extension, when not empty): `^[a-zA-Z][0-9a-zA-Z-]{1,33}[0-9a-zA-Z]$` — 3-35 chars, must start with a letter, alphanumeric + dash, no trailing dash.
+**Local ID validation** (when not empty): `^[a-zA-Z][0-9a-zA-Z-]{1,33}[0-9a-zA-Z]$` — 3-35 chars, must start with a letter, alphanumeric + dash, no trailing dash.
 
 **Module references use the remote name.** Inside a module's `metadata.json`:
 ```json
@@ -39,7 +26,7 @@ The remote name is **immutable** once created. The VS Code extension stores the 
 ```
 …not the local folder name. Same applies for `webhook.connection` and `rpc.connection` references.
 
-> When pulling/cloning an existing app, the local folder name is usually the remote name (Make sends it back as-is). Renaming the folder requires updating `idMapping` and every `attachedAccounts`/`connection`/`altConnection` reference.
+> When pulling/cloning an existing app, the repo folder name is usually the remote name (Make sends it back as-is). A folder rename is matched via the connection's `$id` (see below), which keeps `attachedAccounts`/`connection`/`altConnection` references intact across the sync.
 
 ### Stable identity across GitHub sync — `$id`
 
@@ -49,7 +36,7 @@ If the app is bound to a **GitHub repo**, the connection's `metadata.json` also 
 { "$id": "550e8400-e29b-41d4-a716-446655440000", "label": "GitHub OAuth Connection", "type": "oauth" }
 ```
 
-A stable `$id` survives folder renames and lets the same repo be cloned into several apps (each app auto-names its own connection, all sharing the one `$id`). Make mints a random `$id` on first push if absent, but **provide your own UUID v4 when hand-authoring** the file so identity is deterministic from commit one. See `architecture.md` → "Stable component identity". (This is separate from `makecomapp.json`'s `idMapping`.)
+A stable `$id` survives folder renames and lets the same repo be cloned into several apps (each app auto-names its own connection, all sharing the one `$id`). Make mints a random `$id` on first push if absent, but **provide your own UUID v4 when hand-authoring** the file so identity is deterministic from commit one. See `architecture.md` → "Stable component identity".
 
 ## Connection types — only two per schema
 

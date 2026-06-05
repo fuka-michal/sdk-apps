@@ -1,6 +1,6 @@
 ---
 name: make-app
-description: Build, edit, and debug Make.com (Integromat) Custom Apps (Apps SDK). Use when working with .imljson files, makecomapp.json, base / connections / modules / webhooks / rpc / functions folders, IML expressions ({{...}}), connection.accessToken, response.iterate / response.output / response.error, RPC URLs (rpc://...), OAuth2 / Basic / JWT connections, polling and instant triggers, dynamic options / fields / sample RPCs, pagination, log.sanitize, or any phrase like "Make app", "Integromat", "IML", "imljson".
+description: Build, edit, and debug Make.com (Integromat) Custom Apps (Apps SDK). Use when working with .imljson files, base / connections / modules / webhooks / rpc / functions folders, IML expressions ({{...}}), connection.accessToken, response.iterate / response.output / response.error, RPC URLs (rpc://...), OAuth2 / Basic / JWT connections, polling and instant triggers, dynamic options / fields / sample RPCs, pagination, log.sanitize, or any phrase like "Make app", "Integromat", "IML", "imljson".
 ---
 
 # Make.com Custom Apps SDK
@@ -16,7 +16,6 @@ A Make app is a tree of **components**, each component is a folder of small JSON
   base.imljson                     Inherited HTTP defaults (baseUrl, headers, response, log)
   groups.imljson                   Module categorization in the scenario builder UI
   metadata.json                    App label/description/theme
-  makecomapp.json                  (local dev only) Maps folder to remote Make app(s)
   connections/<name>/              Auth definitions (OAuth2 / Basic / JWT / OAuth1)
   modules/<name>/                  Action / Search / Trigger / Instant / Universal / Responder
   webhooks/<name>/                 Webhook receivers (shared or dedicated)
@@ -34,7 +33,7 @@ A Make app is a tree of **components**, each component is a folder of small JSON
 | RPC         | **Developer** (mandatory, sent as-is)            | `camelCase` (e.g. `getCustomFields`)   |
 | Function    | **Developer** (mandatory; matches JS identifier) | `camelCase` (e.g. `removeEmpty`)       |
 
-**Implication:** `attachedAccounts`, `connection`, `altConnection`, and instant-trigger `webhook` references use the **server-generated** name (`myapp-abc1`) — not the local folder name. The `idMapping` block inside `origins[]` in `makecomapp.json` records the local↔remote pairing. See `architecture.md` for the full regex table.
+**Implication:** `attachedAccounts`, `connection`, `altConnection`, and instant-trigger `webhook` references use the **server-generated** name (`myapp-abc1`) — not the local folder name. Under GitHub sync, the folder↔remote pairing is tracked via each connection/webhook's `$id` (see below). See `architecture.md` for the full regex table.
 
 **Stable identity (`$id`).** When an app is synced to a **GitHub repo**, each connection/webhook `metadata.json` carries a `$id` (a UUID v4) that keeps its identity stable across folder/name renames and across cloning the repo into multiple apps. Make mints one on first push if absent, but **providing your own UUID v4 is recommended when hand-authoring** these files. See `architecture.md` → "Stable component identity".
 
@@ -83,7 +82,7 @@ Read the relevant detail file with the Read tool when working on:
 | `response.error`, error types (RateLimitError, etc.)  | `errors.md`                                 |
 | Paginating list endpoints                             | `pagination.md`                             |
 | Naming, search-vs-action choice, polling trigger sort | `best-practices.md`                         |
-| VS Code extension setup, Make CLI, makecomapp.json    | `tooling.md`                                |
+| VS Code extension setup, Make CLI                     | `tooling.md`                                |
 | DevTool, Live Stream, debugging RPCs/IML/pagination   | `debugging.md`                              |
 | App review, versioning, breaking changes              | `publishing.md`                             |
 | Copy-paste starters (OAuth2 conn, Action, Search, …)  | `recipes.md`                                |
