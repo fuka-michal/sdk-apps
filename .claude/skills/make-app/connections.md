@@ -58,17 +58,20 @@ A stable `$id` survives folder renames and lets the same repo be cloned into sev
 ## Common patterns
 
 - The connection's communication validates the credentials by hitting an endpoint that fails on wrong creds.
-- Persist tokens / metadata into the connection via `response.data.<field>` — accessible in modules as `{{connection.<field>}}`.
+- **Static parameters are already on the connection.** Every field in `parameters.imljson` is automatically readable as `{{connection.<name>}}` in base and modules — and as `{{parameters.<name>}}` inside the connection's own communication. Do **not** copy a parameter through `response.data` (see warning below).
+- Persist **API-derived** values (tokens, IDs returned by the validation/token call) into the connection via `response.data.<field>` — accessible in modules as `{{connection.<field>}}`.
 - Set `response.uid` to the remote user ID (required for shared webhooks).
 - Set `response.metadata` to a human label (shown in parentheses after the connection's user-given name).
 - Place `common.client_id` / `common.client_secret` in Common Data (encrypted, locked after approval).
 - Sanitize tokens, codes, secrets in every step's `log.sanitize`.
 
-## `response.data` — persisting the token into the connection
+## `response.data` — persisting an API-derived value into the connection
 
 The `data` directive **saves data to the connection** so it can be accessed later from any module through the `connection` variable. It works like the `temp` directive, **except `data` is persisted on the connection** (across module executions) instead of living only for the current request chain.
 
 This is how a token obtained during connection validation (or token exchange) is stored once and reused by every module — the module never re-runs the auth call, it just reads `{{connection.<field>}}`.
+
+> ⚠️ **Do not pipe a static parameter through `data`.** A field defined in `parameters.imljson` (an API key, username, password…) is *already* stored on the connection and readable as `{{connection.<name>}}`. Writing `"data": { "apiKey": "{{parameters.apiKey}}" }` is redundant, and because the `data` block only runs on the validation call (not on every refresh/use), it can leave `{{connection.apiKey}}` **empty** in modules. Reference the parameter directly instead. Reserve `data` for values you receive *back* from the API (tokens, account IDs) that aren't already a parameter.
 
 **Save it** in the connection's `communication.imljson` (Basic) or the `token` / `info` / `refresh` phases (OAuth):
 ```json
@@ -116,17 +119,21 @@ Notes:
 ```json
 {
   "url": "https://api.example.com/v1/me",
-  "headers": { "x-api-key": "{{parameters.apiKey}}" },
+  "headers": { "authorization": "Token {{connection.apiKey}}" },
   "response": {
     "uid": "{{body.id}}",
-    "metadata": { "type": "text", "value": "{{body.email}}" },
-    "data": { "apiKey": "{{parameters.apiKey}}" }
+    "metadata": { "type": "text", "value": "{{body.email}}" }
   },
-  "log": { "sanitize": ["request.headers.`x-api-key`"] }
+  "log": { "sanitize": ["request.headers.authorization"] }
 }
 ```
 
-Stored as `{{connection.apiKey}}` — use in base headers/qs.
+- `apiKey` is the parameter — read it directly as `{{connection.apiKey}}` (also `{{parameters.apiKey}}` works here inside the connection). **No `response.data` needed**: the parameter is already persisted on the connection.
+- Put the same auth header in `base.imljson` so every module inherits it:
+  ```json
+  { "headers": { "authorization": "Token {{connection.apiKey}}" } }
+  ```
+- The header shape is provider-specific — `Token <key>`, `Bearer <key>`, a custom `x-api-key` header, or a `qs` param. Match what the API expects.
 
 ## OAuth 2.0 (Authorization Code)
 
@@ -309,14 +316,13 @@ Holds `client_id` and `client_secret` — encrypted, locked after approval, shar
     "authorization": "Bearer {{jwt({iss: parameters.email, scope: 'read', aud: 'https://api.example.com', exp: addMinutes(now, 30), iat: now}, parameters.privateKey, 'RS256')}}"
   },
   "response": {
-    "data": { "email": "{{parameters.email}}", "privateKey": "{{parameters.privateKey}}" },
     "metadata": { "type": "email", "value": "{{parameters.email}}" }
   },
   "log": { "sanitize": ["request.headers.authorization"] }
 }
 ```
 
-Reuse via `{{jwt({...}, connection.privateKey, 'RS256')}}` in base headers.
+`email` and `privateKey` are parameters — they're already on the connection, so reuse them directly via `{{jwt({...}, connection.privateKey, 'RS256')}}` in base headers. No `response.data` copy needed.
 
 ## OAuth 1.0
 
